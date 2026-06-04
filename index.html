@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>信核数据党群平台</title>
+  <meta name="description" content="信核数据党群平台，展示党支部新闻动态、组织风采与党建成果。">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero__overlay"></div>
+    <div class="container hero__content">
+      <p class="hero__tag">XINHE DATA PARTY PLATFORM</p>
+      <h1>信核数据党群平台</h1>
+      <p class="hero__text">
+        聚焦信核数据党支部新闻动态、组织建设与党员风采，打造公开、清晰、便于维护的党建展示窗口。
+      </p>
+      <div class="hero__actions">
+        <a class="button button--primary" href="#news">查看新闻</a>
+        <a class="button button--ghost" href="admin.html">内容录入</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="section section--intro">
+      <div class="container intro-grid">
+        <article class="card metric-card">
+          <span class="metric-card__label">平台定位</span>
+          <h2>党建宣传与内容归集</h2>
+          <p>通过统一页面展示党支部活动、专题学习、志愿服务与党员风采内容。</p>
+        </article>
+        <article class="card metric-card">
+          <span class="metric-card__label">内容方式</span>
+          <h2>图片 + 文字</h2>
+          <p>支持通过本地管理页生成新闻内容，配合图片资源目录快速补充站点板块。</p>
+        </article>
+        <article class="card metric-card">
+          <span class="metric-card__label">部署方式</span>
+          <h2>GitHub Pages</h2>
+          <p>纯静态部署，无需服务器，适合党支部新闻公示与长期维护。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="news">
+      <div class="container section-heading">
+        <div>
+          <p class="section-heading__eyebrow">Branch News</p>
+          <h2>党支部新闻动态</h2>
+        </div>
+        <p class="section-heading__text">展示最新活动、专题学习、共建交流与党群服务内容。</p>
+      </div>
+      <div class="container news-layout">
+        <div class="featured-news card" id="featured-news">
+          <p class="loading-text">正在加载新闻内容...</p>
+        </div>
+        <div class="news-list" id="news-list"></div>
+      </div>
+    </section>
+
+    <section class="section section--accent">
+      <div class="container section-heading">
+        <div>
+          <p class="section-heading__eyebrow">Gallery</p>
+          <h2>图片新闻专区</h2>
+        </div>
+        <p class="section-heading__text">重点展示主题党日、学习交流、志愿服务等活动影像。</p>
+      </div>
+      <div class="container gallery-grid" id="gallery-grid">
+        <p class="loading-text">正在加载图片新闻...</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container showcase-grid">
+        <article class="card info-card">
+          <p class="section-heading__eyebrow">Organization</p>
+          <h2>组织风采</h2>
+          <p>围绕支部建设、党员管理、活动组织和服务群众等工作，展示党组织凝聚力与执行力。</p>
+        </article>
+        <article class="card info-card">
+          <p class="section-heading__eyebrow">Achievement</p>
+          <h2>党建成果</h2>
+          <p>沉淀主题教育、联建共建、技术攻坚与服务实践中的成果经验，形成可持续展示内容。</p>
+        </article>
+        <article class="card info-card">
+          <p class="section-heading__eyebrow">Guide</p>
+          <h2>内容更新说明</h2>
+          <p>进入“内容录入”页面，填写标题、日期、摘要、正文和图片路径，即可生成用于更新的数据内容。</p>
+          <a class="text-link" href="admin.html">打开内容录入页</a>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer__content">
+      <div>
+        <h3>信核数据党群平台</h3>
+        <p>用于信核数据党支部新闻宣传与党建内容展示的 GitHub Pages 站点。</p>
+      </div>
+      <div>
+        <p>内容数据文件：<code>data/news.json</code></p>
+        <p>图片目录建议：<code>assets/uploads/</code></p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

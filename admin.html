@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>内容录入 - 信核数据党群平台</title>
+  <meta name="description" content="用于生成信核数据党群平台新闻数据的本地录入页。">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="admin-page">
+  <header class="sub-hero">
+    <div class="container">
+      <p class="hero__tag">CONTENT ENTRY</p>
+      <h1>新闻内容录入</h1>
+      <p class="hero__text">
+        本页用于填写图片和文字内容，生成可复制到 <code>data/news.json</code> 的新闻数据。
+      </p>
+      <a class="button button--ghost" href="index.html">返回首页</a>
+    </div>
+  </header>
+
+  <main class="section">
+    <div class="container admin-layout">
+      <section class="card form-card">
+        <h2>录入表单</h2>
+        <form id="news-form">
+          <label class="form-field">
+            <span>新闻标题</span>
+            <input type="text" name="title" placeholder="请输入新闻标题" required>
+          </label>
+          <label class="form-field">
+            <span>新闻分类</span>
+            <input type="text" name="category" placeholder="例如：主题党日、学习教育、志愿服务" required>
+          </label>
+          <label class="form-field">
+            <span>发布日期</span>
+            <input type="date" name="date" required>
+          </label>
+          <label class="form-field">
+            <span>摘要</span>
+            <textarea name="summary" rows="3" placeholder="请输入摘要内容" required></textarea>
+          </label>
+          <label class="form-field">
+            <span>正文</span>
+            <textarea name="content" rows="6" placeholder="请输入正文内容" required></textarea>
+          </label>
+          <label class="form-field">
+            <span>图片路径</span>
+            <input type="text" name="image" placeholder="例如：assets/uploads/news-01.jpg" required>
+          </label>
+          <label class="form-field">
+            <span>图片上传参考</span>
+            <input type="file" name="imageFile" accept="image/*">
+          </label>
+          <button class="button button--primary" type="submit">生成新闻数据</button>
+        </form>
+      </section>
+
+      <section class="card preview-card">
+        <h2>结果预览</h2>
+        <div class="preview-card__panel" id="entry-preview">
+          <p>提交表单后，这里会显示新闻卡片预览。</p>
+        </div>
+        <h3>JSON 数据</h3>
+        <pre class="code-block" id="json-output">{
+  "id": "",
+  "title": "",
+  "category": "",
+  "date": "",
+  "summary": "",
+  "content": "",
+  "image": ""
+}</pre>
+        <button class="button button--ghost" type="button" id="copy-json">复制 JSON</button>
+        <div class="tips-box">
+          <p>使用说明：</p>
+          <p>1. 将图片放入 <code>assets/uploads/</code> 目录。</p>
+          <p>2. 把这里生成的 JSON 对象追加到 <code>data/news.json</code> 数组中。</p>
+          <p>3. 提交到 GitHub 后，Pages 页面会自动展示新内容。</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
