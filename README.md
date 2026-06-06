@@ -1,135 +1,125 @@
-# 信核数据党群平台
+# 股票分析网站
 
-这是一个基于 GitHub Pages 的静态站点项目，用于展示信核数据党支部新闻动态、图片新闻、组织风采和党建成果。
+这是一个可部署到 GitHub Pages 的纯前端股票分析网站，支持输入股票代码查询公开行情数据，并展示：
 
-站点采用纯前端实现，无需独立服务器，适合用于公开展示和长期维护。
+- 最新收盘价
+- 日内高低点
+- 涨跌幅
+- 成交量
+- 最近 60 个交易日 K 线图
+- 最近 60 个交易日成交量图
+- 最近 10 个交易日数据表格
 
 ## 项目结构
 
 ```text
 .
 ├── index.html              首页
-├── admin.html              新闻内容录入页
 ├── styles.css              页面样式
-├── script.js               新闻数据加载与录入页逻辑
-├── data/
-│   └── news.json           新闻数据文件
+├── script.js               股票查询、数据处理和图表绘制逻辑
 └── assets/
-    └── uploads/            图片资源目录
+    └── uploads/            预留目录
 ```
 
-## 功能说明
+## 技术方案
 
-- 首页展示党支部新闻动态、图片新闻专区、组织风采和党建成果板块
-- 通过 `data/news.json` 统一管理新闻内容
-- 提供 `admin.html` 辅助录入新闻标题、摘要、正文、日期和图片路径
-- 支持将图片放入 `assets/uploads/` 目录后在页面中引用
+- 前端：原生 HTML、CSS、JavaScript
+- 图表：Canvas 原生绘制
+- 数据源：Alpha Vantage 官方公开股票 API
+- 部署方式：GitHub Pages
 
-## 内容维护方式
+当前版本不依赖后端服务，适合直接托管到静态站点平台。
 
-### 1. 上传图片
+## 使用方式
 
-将新闻图片放入：
+### 1. 获取 API Key
+
+前往 Alpha Vantage 官网申请免费 API Key：
 
 ```text
-assets/uploads/
+https://www.alphavantage.co/support/#api-key
 ```
 
-建议命名方式：
+### 2. 查询股票
+
+打开首页后，输入：
+
+- API Key
+- 股票代码，例如 `AAPL`、`MSFT`、`NVDA`
+
+然后点击“查询行情”。
+
+### 3. 查看结果
+
+页面会展示：
+
+- 查询状态
+- 最新收盘价
+- 涨跌幅
+- 最高价和最低价
+- 成交量
+- K 线图
+- 成交量柱状图
+- 最近 10 个交易日表格
+
+## 数据来源说明
+
+当前实现使用的是 Alpha Vantage 的日线接口：
 
 ```text
-assets/uploads/news-01.jpg
-assets/uploads/news-02.jpg
+TIME_SERIES_DAILY
 ```
 
-### 2. 录入新闻内容
-
-打开本地页面：
+接口请求示例：
 
 ```text
-admin.html
+https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=AAPL&outputsize=compact&apikey=你的Key
 ```
 
-填写以下内容：
+## 本地开发
 
-- 新闻标题
-- 新闻分类
-- 发布日期
-- 摘要
-- 正文
-- 图片路径
+可以直接打开 `index.html` 查看页面结构，但建议通过静态文件服务进行预览，以避免部分浏览器环境下的限制。
 
-提交后，页面会生成一段 JSON 数据。
-
-### 3. 更新新闻数据
-
-将生成的 JSON 对象追加到 `data/news.json` 数组中，例如：
-
-```json
-{
-  "id": "2026-06-04-news-demo",
-  "title": "信核数据党支部开展专题学习交流活动",
-  "category": "学习教育",
-  "date": "2026-06-04",
-  "summary": "围绕支部重点工作开展专题学习和交流研讨。",
-  "content": "支部党员结合岗位实践进行了深入交流，进一步统一思想认识，明确后续工作方向。",
-  "image": "assets/uploads/news-01.jpg"
-}
-```
-
-新闻字段说明：
-
-- `id`：新闻唯一标识，建议包含日期
-- `title`：新闻标题
-- `category`：新闻分类
-- `date`：发布日期，格式为 `YYYY-MM-DD`
-- `summary`：新闻摘要
-- `content`：新闻正文
-- `image`：图片路径
-
-## 本地预览
-
-可以直接在浏览器中打开 `index.html` 和 `admin.html` 进行查看。
-
-如果浏览器对本地 `fetch` 有限制，建议使用任意静态文件服务方式预览，例如编辑器自带预览服务。
+如果你使用 VS Code，可以用任意本地静态服务器插件预览。
 
 ## GitHub Pages 部署
 
-### 1. 推送仓库到 GitHub
+### 1. 提交并推送仓库
 
-将当前项目提交并推送到 GitHub 仓库。
+将项目推送到 GitHub 仓库。
 
 ### 2. 开启 Pages
 
-在 GitHub 仓库设置中打开：
+在仓库设置中选择：
 
 ```text
-Settings -> Pages
+Settings -> Pages -> Deploy from branch
 ```
 
-选择部署分支：
+部署分支建议选择：
 
 ```text
 main / root
 ```
 
-### 3. 访问站点
+### 3. 访问地址
 
-部署完成后，GitHub Pages 会生成站点地址，例如：
+部署成功后，可以通过以下形式访问：
 
 ```text
 https://你的用户名.github.io/
 ```
 
-如果仓库名称不是用户主页仓库，也可能是：
+或者：
 
 ```text
 https://你的用户名.github.io/仓库名/
 ```
 
-## 注意事项
+## 限制说明
 
-- 当前项目是静态站点，不包含后端数据库
-- `admin.html` 用于辅助生成新闻数据，不会自动把内容写回仓库
-- 新增新闻后，仍需手动更新 `data/news.json` 并提交到 GitHub
-- 若需要真正的在线上传和自动保存能力，需要额外接入 CMS、GitHub API 或独立后端服务
+- 这是纯前端实现，API Key 会在浏览器端使用
+- 当前版本不会把 API Key 提交到仓库，但会保存在浏览器本地 `localStorage`
+- Alpha Vantage 免费 Key 有调用频率限制
+- 部分市场或代码可能不在该接口支持范围内
+- 如果后续需要更稳定的数据源、更多指标或更高请求频率，建议增加后端中转层

@@ -1,185 +1,323 @@
-async function loadNews() {
-  const newsList = document.getElementById("news-list");
-  const featuredNews = document.getElementById("featured-news");
-  const galleryGrid = document.getElementById("gallery-grid");
+const MAX_POINTS = 60;
 
-  if (!newsList && !featuredNews && !galleryGrid) {
+const elements = {
+  form: document.getElementById("stock-form"),
+  apiKey: document.getElementById("api-key"),
+  symbol: document.getElementById("symbol"),
+  status: document.getElementById("summary-status"),
+  message: document.getElementById("summary-message"),
+  close: document.getElementById("summary-close"),
+  date: document.getElementById("summary-date"),
+  change: document.getElementById("summary-change"),
+  range: document.getElementById("summary-range"),
+  volume: document.getElementById("summary-volume"),
+  open: document.getElementById("summary-open"),
+  tableBody: document.getElementById("data-table-body"),
+  candlestickCanvas: document.getElementById("candlestick-chart"),
+  volumeCanvas: document.getElementById("volume-chart")
+};
+
+if (elements.form) {
+  elements.form.addEventListener("submit", handleSubmit);
+}
+
+async function handleSubmit(event) {
+  event.preventDefault();
+  const apiKey = elements.apiKey.value.trim();
+  const symbol = elements.symbol.value.trim().toUpperCase();
+
+  if (!apiKey || !symbol) {
+    updateStatus("输入不完整", "请填写 API Key 和股票代码。");
     return;
   }
 
+  updateStatus("查询中", `正在获取 ${symbol} 的日线行情...`);
+  clearCharts();
+  renderTable([]);
+
   try {
-    const response = await fetch("data/news.json");
-    if (!response.ok) {
-      throw new Error("新闻数据加载失败");
+    const series = await fetchDailySeries(symbol, apiKey);
+    const points = normalizeSeries(series).slice(0, MAX_POINTS);
+
+    if (points.length < 2) {
+      throw new Error("返回的行情数据不足，无法绘图。");
     }
 
-    const newsItems = await response.json();
-    if (!Array.isArray(newsItems) || newsItems.length === 0) {
-      renderEmptyState(newsList, featuredNews, galleryGrid);
+    const latest = points[0];
+    const previous = points[1];
+    updateSummary(symbol, latest, previous);
+    renderTable(points.slice(0, 10));
+    drawCandlestickChart(points.slice().reverse());
+    drawVolumeChart(points.slice().reverse());
+    updateStatus("查询完成", `${symbol} 最近 ${points.length} 个交易日数据已加载。`);
+    window.localStorage.setItem("stock-api-key", apiKey);
+    window.localStorage.setItem("stock-last-symbol", symbol);
+  } catch (error) {
+    updateStatus("查询失败", error.message);
+  }
+}
+
+async function fetchDailySeries(symbol, apiKey) {
+  const url = new URL("https://www.alphavantage.co/query");
+  url.searchParams.set("function", "TIME_SERIES_DAILY");
+  url.searchParams.set("symbol", symbol);
+  url.searchParams.set("outputsize", "compact");
+  url.searchParams.set("apikey", apiKey);
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    throw new Error(`请求失败：HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (data["Error Message"]) {
+    throw new Error("股票代码无效，或当前数据源不支持该代码。");
+  }
+
+  if (data.Note) {
+    throw new Error("API 请求过于频繁，请稍后重试。");
+  }
+
+  const series = data["Time Series (Daily)"];
+  if (!series) {
+    throw new Error("未获取到日线数据，请检查 API Key 是否正确。");
+  }
+
+  return series;
+}
+
+function normalizeSeries(series) {
+  return Object.entries(series)
+    .map(([date, values]) => ({
+      date,
+      open: Number(values["1. open"]),
+      high: Number(values["2. high"]),
+      low: Number(values["3. low"]),
+      close: Number(values["4. close"]),
+      volume: Number(values["5. volume"])
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function updateSummary(symbol, latest, previous) {
+  const diff = latest.close - previous.close;
+  const percent = (diff / previous.close) * 100;
+  const isUp = diff >= 0;
+
+  elements.close.textContent = formatPrice(latest.close);
+  elements.date.textContent = `${symbol} | ${latest.date}`;
+  elements.change.textContent = `${isUp ? "+" : ""}${formatPrice(diff)} (${percent.toFixed(2)}%)`;
+  elements.change.className = isUp ? "price-up" : "price-down";
+  elements.range.textContent = `最高 ${formatPrice(latest.high)} / 最低 ${formatPrice(latest.low)}`;
+  elements.volume.textContent = formatVolume(latest.volume);
+  elements.open.textContent = `开盘 ${formatPrice(latest.open)}`;
+}
+
+function updateStatus(title, message) {
+  elements.status.textContent = title;
+  elements.message.textContent = message;
+}
+
+function renderTable(points) {
+  if (!points.length) {
+    elements.tableBody.innerHTML = `
+      <tr>
+        <td colspan="6" class="empty-cell">暂无数据</td>
+      </tr>
+    `;
+    return;
+  }
+
+  elements.tableBody.innerHTML = points.map((point) => `
+    <tr>
+      <td>${point.date}</td>
+      <td>${formatPrice(point.open)}</td>
+      <td>${formatPrice(point.high)}</td>
+      <td>${formatPrice(point.low)}</td>
+      <td>${formatPrice(point.close)}</td>
+      <td>${formatVolume(point.volume)}</td>
+    </tr>
+  `).join("");
+}
+
+function drawCandlestickChart(points) {
+  const canvas = elements.candlestickCanvas;
+  if (!canvas) {
+    return;
+  }
+
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+
+  const padding = { top: 24, right: 20, bottom: 28, left: 56 };
+  const highs = points.map((point) => point.high);
+  const lows = points.map((point) => point.low);
+  const maxPrice = Math.max(...highs);
+  const minPrice = Math.min(...lows);
+  const priceRange = Math.max(maxPrice - minPrice, 0.01);
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  const candleSlot = plotWidth / points.length;
+  const candleWidth = Math.max(4, candleSlot * 0.58);
+
+  drawChartFrame(ctx, width, height, padding);
+
+  for (let i = 0; i < points.length; i += 1) {
+    const point = points[i];
+    const x = padding.left + i * candleSlot + candleSlot / 2;
+    const openY = mapValue(point.open, minPrice, priceRange, padding.top, plotHeight);
+    const closeY = mapValue(point.close, minPrice, priceRange, padding.top, plotHeight);
+    const highY = mapValue(point.high, minPrice, priceRange, padding.top, plotHeight);
+    const lowY = mapValue(point.low, minPrice, priceRange, padding.top, plotHeight);
+    const color = point.close >= point.open ? "#3dd2a5" : "#ff6b7a";
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(x, highY);
+    ctx.lineTo(x, lowY);
+    ctx.stroke();
+
+    const bodyTop = Math.min(openY, closeY);
+    const bodyHeight = Math.max(Math.abs(closeY - openY), 2);
+    ctx.fillStyle = color;
+    ctx.fillRect(x - candleWidth / 2, bodyTop, candleWidth, bodyHeight);
+  }
+
+  drawPriceAxis(ctx, minPrice, maxPrice, padding, plotHeight, width);
+}
+
+function drawVolumeChart(points) {
+  const canvas = elements.volumeCanvas;
+  if (!canvas) {
+    return;
+  }
+
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const width = canvas.clientWidth;
+  const height = canvas.clientHeight;
+
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+
+  const padding = { top: 24, right: 20, bottom: 28, left: 56 };
+  const plotWidth = width - padding.left - padding.right;
+  const plotHeight = height - padding.top - padding.bottom;
+  const maxVolume = Math.max(...points.map((point) => point.volume), 1);
+  const barSlot = plotWidth / points.length;
+  const barWidth = Math.max(4, barSlot * 0.62);
+
+  drawChartFrame(ctx, width, height, padding);
+
+  points.forEach((point, index) => {
+    const x = padding.left + index * barSlot + (barSlot - barWidth) / 2;
+    const heightRatio = point.volume / maxVolume;
+    const barHeight = plotHeight * heightRatio;
+    const y = padding.top + plotHeight - barHeight;
+    ctx.fillStyle = point.close >= point.open ? "rgba(61, 210, 165, 0.85)" : "rgba(255, 107, 122, 0.85)";
+    ctx.fillRect(x, y, barWidth, barHeight);
+  });
+
+  drawVolumeAxis(ctx, maxVolume, padding, plotHeight, width);
+}
+
+function drawChartFrame(ctx, width, height, padding) {
+  ctx.fillStyle = "rgba(4, 10, 18, 0.72)";
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.strokeStyle = "rgba(171, 194, 224, 0.14)";
+  ctx.lineWidth = 1;
+
+  const lines = 4;
+  for (let i = 0; i <= lines; i += 1) {
+    const y = padding.top + ((height - padding.top - padding.bottom) / lines) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(width - padding.right, y);
+    ctx.stroke();
+  }
+}
+
+function drawPriceAxis(ctx, minPrice, maxPrice, padding, plotHeight, width) {
+  ctx.fillStyle = "#93a4bf";
+  ctx.font = '12px "Microsoft YaHei"';
+  ctx.textAlign = "right";
+
+  const lines = 4;
+  for (let i = 0; i <= lines; i += 1) {
+    const ratio = i / lines;
+    const price = maxPrice - (maxPrice - minPrice) * ratio;
+    const y = padding.top + plotHeight * ratio + 4;
+    ctx.fillText(formatPrice(price), padding.left - 10, y);
+  }
+
+  ctx.textAlign = "left";
+  ctx.fillText("最近", padding.left, padding.top + plotHeight + 20);
+  ctx.fillText("当前", width - padding.right - 28, padding.top + plotHeight + 20);
+}
+
+function drawVolumeAxis(ctx, maxVolume, padding, plotHeight, width) {
+  ctx.fillStyle = "#93a4bf";
+  ctx.font = '12px "Microsoft YaHei"';
+  ctx.textAlign = "right";
+
+  const lines = 4;
+  for (let i = 0; i <= lines; i += 1) {
+    const ratio = i / lines;
+    const volume = Math.round(maxVolume * (1 - ratio));
+    const y = padding.top + plotHeight * ratio + 4;
+    ctx.fillText(formatVolume(volume), padding.left - 10, y);
+  }
+
+  ctx.textAlign = "left";
+  ctx.fillText("最近", padding.left, padding.top + plotHeight + 20);
+  ctx.fillText("当前", width - padding.right - 28, padding.top + plotHeight + 20);
+}
+
+function mapValue(value, minPrice, priceRange, top, plotHeight) {
+  return top + ((minPrice + priceRange - value) / priceRange) * plotHeight;
+}
+
+function clearCharts() {
+  [elements.candlestickCanvas, elements.volumeCanvas].forEach((canvas) => {
+    if (!canvas) {
       return;
     }
 
-    renderNews(newsItems, featuredNews, newsList, galleryGrid);
-  } catch (error) {
-    renderErrorState(newsList, featuredNews, galleryGrid, error);
-  }
-}
-
-function renderNews(newsItems, featuredNews, newsList, galleryGrid) {
-  const [firstItem, ...otherItems] = newsItems;
-
-  if (featuredNews) {
-    featuredNews.innerHTML = `
-      <img src="${escapeHtml(firstItem.image)}" alt="${escapeHtml(firstItem.title)}">
-      <div class="featured-news__body">
-        <div class="news-meta">
-          <span class="news-badge">${escapeHtml(firstItem.category)}</span>
-          <span>${escapeHtml(firstItem.date)}</span>
-        </div>
-        <h3 class="featured-news__title">${escapeHtml(firstItem.title)}</h3>
-        <p class="featured-news__summary">${escapeHtml(firstItem.summary)}</p>
-        <p class="featured-news__content">${escapeHtml(firstItem.content)}</p>
-      </div>
-    `;
-  }
-
-  if (newsList) {
-    newsList.innerHTML = otherItems.map((item) => `
-      <article class="card news-card">
-        <div class="news-meta">
-          <span class="news-badge">${escapeHtml(item.category)}</span>
-          <span>${escapeHtml(item.date)}</span>
-        </div>
-        <h3 class="news-card__title">${escapeHtml(item.title)}</h3>
-        <p class="news-card__summary">${escapeHtml(item.summary)}</p>
-      </article>
-    `).join("");
-  }
-
-  if (galleryGrid) {
-    const galleryItems = newsItems.slice(0, 6);
-    galleryGrid.innerHTML = galleryItems.map((item) => `
-      <article class="card gallery-item">
-        <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.title)}">
-        <div class="gallery-item__body">
-          <div class="gallery-item__meta">
-            <span class="news-badge">${escapeHtml(item.category)}</span>
-            <span>${escapeHtml(item.date)}</span>
-          </div>
-          <h3 class="gallery-item__title">${escapeHtml(item.title)}</h3>
-          <p class="news-card__summary">${escapeHtml(item.summary)}</p>
-        </div>
-      </article>
-    `).join("");
-  }
-}
-
-function renderEmptyState(newsList, featuredNews, galleryGrid) {
-  const emptyHtml = "<p class=\"loading-text\">暂无新闻内容，请先在 data/news.json 中添加数据。</p>";
-  if (newsList) {
-    newsList.innerHTML = emptyHtml;
-  }
-  if (featuredNews) {
-    featuredNews.innerHTML = emptyHtml;
-  }
-  if (galleryGrid) {
-    galleryGrid.innerHTML = emptyHtml;
-  }
-}
-
-function renderErrorState(newsList, featuredNews, galleryGrid, error) {
-  const errorHtml = `<p class="loading-text">${escapeHtml(error.message)}</p>`;
-  if (newsList) {
-    newsList.innerHTML = errorHtml;
-  }
-  if (featuredNews) {
-    featuredNews.innerHTML = errorHtml;
-  }
-  if (galleryGrid) {
-    galleryGrid.innerHTML = errorHtml;
-  }
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll("\"", "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function setupAdminForm() {
-  const form = document.getElementById("news-form");
-  const preview = document.getElementById("entry-preview");
-  const jsonOutput = document.getElementById("json-output");
-  const copyButton = document.getElementById("copy-json");
-
-  if (!form || !preview || !jsonOutput || !copyButton) {
-    return;
-  }
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const formData = new FormData(form);
-    const title = String(formData.get("title") || "").trim();
-    const category = String(formData.get("category") || "").trim();
-    const date = String(formData.get("date") || "").trim();
-    const summary = String(formData.get("summary") || "").trim();
-    const content = String(formData.get("content") || "").trim();
-    const image = String(formData.get("image") || "").trim();
-
-    const entry = {
-      id: createEntryId(title, date),
-      title,
-      category,
-      date,
-      summary,
-      content,
-      image
-    };
-
-    preview.innerHTML = `
-      <article>
-        <div class="news-meta">
-          <span class="news-badge">${escapeHtml(entry.category)}</span>
-          <span>${escapeHtml(entry.date)}</span>
-        </div>
-        <h3 class="news-card__title">${escapeHtml(entry.title)}</h3>
-        <p class="news-card__summary">${escapeHtml(entry.summary)}</p>
-        <p class="featured-news__content">${escapeHtml(entry.content)}</p>
-        <p class="featured-news__content">图片路径：<code>${escapeHtml(entry.image)}</code></p>
-      </article>
-    `;
-
-    jsonOutput.textContent = JSON.stringify(entry, null, 2);
-  });
-
-  copyButton.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(jsonOutput.textContent);
-      copyButton.textContent = "已复制";
-      window.setTimeout(() => {
-        copyButton.textContent = "复制 JSON";
-      }, 1600);
-    } catch (error) {
-      copyButton.textContent = "复制失败";
-      window.setTimeout(() => {
-        copyButton.textContent = "复制 JSON";
-      }, 1600);
-    }
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
   });
 }
 
-function createEntryId(title, date) {
-  const normalizedTitle = title
-    .toLowerCase()
-    .replaceAll(/\s+/g, "-")
-    .replaceAll(/[^a-z0-9-\u4e00-\u9fa5]/g, "")
-    .slice(0, 24);
-
-  return `${date || "news"}-${normalizedTitle || "item"}`;
+function formatPrice(value) {
+  return Number(value).toFixed(2);
 }
 
-loadNews();
-setupAdminForm();
+function formatVolume(value) {
+  return new Intl.NumberFormat("zh-CN").format(Math.round(value));
+}
+
+function restoreLastQuery() {
+  const savedKey = window.localStorage.getItem("stock-api-key");
+  const savedSymbol = window.localStorage.getItem("stock-last-symbol");
+
+  if (savedKey) {
+    elements.apiKey.value = savedKey;
+  }
+
+  if (savedSymbol) {
+    elements.symbol.value = savedSymbol;
+  }
+}
+
+restoreLastQuery();
