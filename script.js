@@ -1,5 +1,6 @@
 const MAX_POINTS = 60;
 const FAVORITES_KEY = "stock-favorites";
+let lastQueriedStock = null;
 
 const elements = {
   form: document.getElementById("stock-form"),
@@ -53,15 +54,19 @@ function handleQuickQuery(event) {
 function handleAddFavorite() {
   try {
     const symbol = normalizeAshareSymbol(elements.symbol.value);
+    const stock = lastQueriedStock?.symbol === symbol ? lastQueriedStock : { symbol, name: "" };
     const favorites = getFavorites();
+    const existing = favorites.find((favorite) => favorite.symbol === symbol);
 
-    if (!favorites.includes(symbol)) {
-      favorites.push(symbol);
-      saveFavorites(favorites);
-      renderFavorites();
+    if (existing) {
+      existing.name = existing.name || stock.name;
+    } else {
+      favorites.push(stock);
     }
 
-    updateStatus("已收藏", `${symbol} 已加入我的收藏。`);
+    saveFavorites(favorites);
+    renderFavorites();
+    updateStatus("已收藏", `${formatStockLabel(stock)} 已加入我的收藏。`);
   } catch (error) {
     updateStatus("收藏失败", error.message);
   }
@@ -94,8 +99,8 @@ async function handleSubmit(event) {
   renderTable([]);
 
   try {
-    const points = await fetchDailySeries(symbol);
-    const displayPoints = points.slice(0, MAX_POINTS);
+    const stock = await fetchDailySeries(symbol);
+    const displayPoints = stock.points.slice(0, MAX_POINTS);
 
     if (displayPoints.length < 2) {
       throw new Error("返回的行情数据不足，无法绘图。");
@@ -103,12 +108,14 @@ async function handleSubmit(event) {
 
     const latest = displayPoints[0];
     const previous = displayPoints[1];
-    updateSummary(symbol, latest, previous);
+    lastQueriedStock = { symbol: stock.symbol, name: stock.name };
+    updateSummary(stock, latest, previous);
     renderTable(displayPoints.slice(0, 10));
     drawCandlestickChart(displayPoints.slice().reverse());
     drawVolumeChart(displayPoints.slice().reverse());
-    updateStatus("查询完成", `${symbol} 最近 ${displayPoints.length} 个交易日数据已加载。`);
-    window.localStorage.setItem("stock-last-symbol", symbol);
+    updateFavoriteName(stock);
+    updateStatus("查询完成", `${formatStockLabel(stock)} 最近 ${displayPoints.length} 个交易日数据已加载。`);
+    window.localStorage.setItem("stock-last-symbol", stock.symbol);
   } catch (error) {
     updateStatus("查询失败", error.message);
   }
@@ -126,7 +133,11 @@ async function fetchDailySeries(symbol) {
   }
 
   const data = await response.json();
-  return parseTencentKlines(data, stockSymbol);
+  return {
+    symbol: stockCode,
+    name: parseTencentStockName(data, stockSymbol),
+    points: parseTencentKlines(data, stockSymbol)
+  };
 }
 
 function normalizeAshareSymbol(symbol) {
@@ -140,6 +151,10 @@ function normalizeAshareSymbol(symbol) {
 function toTencentSymbol(stockCode) {
   const market = stockCode.startsWith("6") ? "sh" : "sz";
   return `${market}${stockCode}`;
+}
+
+function parseTencentStockName(data, stockSymbol) {
+  return data?.data?.[stockSymbol]?.qt?.[stockSymbol]?.[1] || "";
 }
 
 function parseTencentKlines(data, stockSymbol) {
@@ -161,18 +176,22 @@ function parseTencentKlines(data, stockSymbol) {
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-function updateSummary(symbol, latest, previous) {
+function updateSummary(stock, latest, previous) {
   const diff = latest.close - previous.close;
   const percent = (diff / previous.close) * 100;
   const isUp = diff >= 0;
 
   elements.close.textContent = formatPrice(latest.close);
-  elements.date.textContent = `${symbol} | ${latest.date}`;
+  elements.date.textContent = `${formatStockLabel(stock)} | ${latest.date}`;
   elements.change.textContent = `${isUp ? "+" : ""}${formatPrice(diff)} (${percent.toFixed(2)}%)`;
   elements.change.className = isUp ? "price-up" : "price-down";
   elements.range.textContent = `最高 ${formatPrice(latest.high)} / 最低 ${formatPrice(latest.low)}`;
   elements.volume.textContent = formatVolume(latest.volume);
   elements.open.textContent = `开盘 ${formatPrice(latest.open)}`;
+}
+
+function formatStockLabel(stock) {
+  return stock.name ? `${stock.name} ${stock.symbol}` : stock.symbol;
 }
 
 function updateStatus(title, message) {
@@ -184,7 +203,20 @@ function getFavorites() {
   try {
     const value = window.localStorage.getItem(FAVORITES_KEY);
     const favorites = JSON.parse(value || "[]");
-    return Array.isArray(favorites) ? favorites.filter((symbol) => /^\d{6}$/.test(symbol)) : [];
+    if (!Array.isArray(favorites)) {
+      return [];
+    }
+
+    return favorites.map((favorite) => {
+      if (typeof favorite === "string") {
+        return { symbol: favorite, name: "" };
+      }
+
+      return {
+        symbol: favorite?.symbol,
+        name: favorite?.name || ""
+      };
+    }).filter((favorite) => /^\d{6}$/.test(favorite.symbol));
   } catch {
     return [];
   }
@@ -195,7 +227,23 @@ function saveFavorites(favorites) {
 }
 
 function removeFavorite(symbol) {
-  saveFavorites(getFavorites().filter((favorite) => favorite !== symbol));
+  saveFavorites(getFavorites().filter((favorite) => favorite.symbol !== symbol));
+  renderFavorites();
+}
+
+function updateFavoriteName(stock) {
+  if (!stock.name) {
+    return;
+  }
+
+  const favorites = getFavorites();
+  const favorite = favorites.find((item) => item.symbol === stock.symbol);
+  if (!favorite || favorite.name === stock.name) {
+    return;
+  }
+
+  favorite.name = stock.name;
+  saveFavorites(favorites);
   renderFavorites();
 }
 
@@ -211,10 +259,10 @@ function renderFavorites() {
     return;
   }
 
-  elements.favoriteList.innerHTML = favorites.map((symbol) => `
+  elements.favoriteList.innerHTML = favorites.map((stock) => `
     <span class="favorite-chip">
-      <button class="chip-button" type="button" data-symbol="${symbol}">${symbol}</button>
-      <button class="favorite-chip__remove" type="button" data-remove-symbol="${symbol}" aria-label="删除 ${symbol}">×</button>
+      <button class="chip-button" type="button" data-symbol="${stock.symbol}">${formatStockLabel(stock)}</button>
+      <button class="favorite-chip__remove" type="button" data-remove-symbol="${stock.symbol}" aria-label="删除 ${stock.symbol}">×</button>
     </span>
   `).join("");
 }
