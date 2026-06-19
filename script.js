@@ -56,14 +56,9 @@ async function handleSubmit(event) {
 
 async function fetchDailySeries(symbol) {
   const stockCode = normalizeAshareSymbol(symbol);
-  const url = new URL("https://push2his.eastmoney.com/api/qt/stock/kline/get");
-  url.searchParams.set("secid", toEastmoneySecid(stockCode));
-  url.searchParams.set("fields1", "f1,f2,f3,f4,f5,f6");
-  url.searchParams.set("fields2", "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61");
-  url.searchParams.set("klt", "101");
-  url.searchParams.set("fqt", "1");
-  url.searchParams.set("beg", "0");
-  url.searchParams.set("end", "20500101");
+  const stockSymbol = toTencentSymbol(stockCode);
+  const url = new URL("https://web.ifzq.gtimg.cn/appstock/app/fqkline/get");
+  url.searchParams.set("param", `${stockSymbol},day,,,${MAX_POINTS},qfq`);
 
   const response = await fetch(url.toString());
   if (!response.ok) {
@@ -71,7 +66,7 @@ async function fetchDailySeries(symbol) {
   }
 
   const data = await response.json();
-  return parseEastmoneyKlines(data);
+  return parseTencentKlines(data, stockSymbol);
 }
 
 function normalizeAshareSymbol(symbol) {
@@ -82,28 +77,26 @@ function normalizeAshareSymbol(symbol) {
   return stockCode;
 }
 
-function toEastmoneySecid(stockCode) {
-  const market = stockCode.startsWith("6") ? "1" : "0";
-  return `${market}.${stockCode}`;
+function toTencentSymbol(stockCode) {
+  const market = stockCode.startsWith("6") ? "sh" : "sz";
+  return `${market}${stockCode}`;
 }
 
-function parseEastmoneyKlines(data) {
-  const klines = data?.data?.klines;
+function parseTencentKlines(data, stockSymbol) {
+  const stockData = data?.data?.[stockSymbol];
+  const klines = stockData?.qfqday || stockData?.day;
   if (!klines?.length) {
     throw new Error("未获取到日线数据，请检查 A 股代码是否正确。");
   }
 
-  return klines.map((row) => {
-    const [date, open, close, high, low, volume] = row.split(",");
-    return {
-      date,
-      open: Number(open),
-      high: Number(high),
-      low: Number(low),
-      close: Number(close),
-      volume: Number(volume)
-    };
-  })
+  return klines.map(([date, open, close, high, low, volume]) => ({
+    date,
+    open: Number(open),
+    high: Number(high),
+    low: Number(low),
+    close: Number(close),
+    volume: Number(volume)
+  }))
     .filter((point) => point.date && Number.isFinite(point.close))
     .sort((a, b) => b.date.localeCompare(a.date));
 }
