@@ -2,7 +2,6 @@ const MAX_POINTS = 60;
 
 const elements = {
   form: document.getElementById("stock-form"),
-  apiKey: document.getElementById("api-key"),
   symbol: document.getElementById("symbol"),
   status: document.getElementById("summary-status"),
   message: document.getElementById("summary-message"),
@@ -23,11 +22,10 @@ if (elements.form) {
 
 async function handleSubmit(event) {
   event.preventDefault();
-  const apiKey = elements.apiKey.value.trim();
   const symbol = elements.symbol.value.trim().toUpperCase();
 
-  if (!apiKey || !symbol) {
-    updateStatus("输入不完整", "请填写 API Key 和股票代码。");
+  if (!symbol) {
+    updateStatus("输入不完整", "请填写股票代码。");
     return;
   }
 
@@ -36,33 +34,30 @@ async function handleSubmit(event) {
   renderTable([]);
 
   try {
-    const series = await fetchDailySeries(symbol, apiKey);
-    const points = normalizeSeries(series).slice(0, MAX_POINTS);
+    const points = await fetchDailySeries(symbol);
+    const displayPoints = points.slice(0, MAX_POINTS);
 
-    if (points.length < 2) {
+    if (displayPoints.length < 2) {
       throw new Error("返回的行情数据不足，无法绘图。");
     }
 
-    const latest = points[0];
-    const previous = points[1];
+    const latest = displayPoints[0];
+    const previous = displayPoints[1];
     updateSummary(symbol, latest, previous);
-    renderTable(points.slice(0, 10));
-    drawCandlestickChart(points.slice().reverse());
-    drawVolumeChart(points.slice().reverse());
-    updateStatus("查询完成", `${symbol} 最近 ${points.length} 个交易日数据已加载。`);
-    window.localStorage.setItem("stock-api-key", apiKey);
+    renderTable(displayPoints.slice(0, 10));
+    drawCandlestickChart(displayPoints.slice().reverse());
+    drawVolumeChart(displayPoints.slice().reverse());
+    updateStatus("查询完成", `${symbol} 最近 ${displayPoints.length} 个交易日数据已加载。`);
     window.localStorage.setItem("stock-last-symbol", symbol);
   } catch (error) {
     updateStatus("查询失败", error.message);
   }
 }
 
-async function fetchDailySeries(symbol, apiKey) {
-  const url = new URL("https://www.alphavantage.co/query");
-  url.searchParams.set("function", "TIME_SERIES_DAILY");
-  url.searchParams.set("symbol", symbol);
-  url.searchParams.set("outputsize", "compact");
-  url.searchParams.set("apikey", apiKey);
+async function fetchDailySeries(symbol) {
+  const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`);
+  url.searchParams.set("range", "3mo");
+  url.searchParams.set("interval", "1d");
 
   const response = await fetch(url.toString());
   if (!response.ok) {
@@ -70,32 +65,27 @@ async function fetchDailySeries(symbol, apiKey) {
   }
 
   const data = await response.json();
-  if (data["Error Message"]) {
-    throw new Error("股票代码无效，或当前数据源不支持该代码。");
-  }
-
-  if (data.Note) {
-    throw new Error("API 请求过于频繁，请稍后重试。");
-  }
-
-  const series = data["Time Series (Daily)"];
-  if (!series) {
-    throw new Error("未获取到日线数据，请检查 API Key 是否正确。");
-  }
-
-  return series;
+  return parseYahooChartData(data);
 }
 
-function normalizeSeries(series) {
-  return Object.entries(series)
-    .map(([date, values]) => ({
-      date,
-      open: Number(values["1. open"]),
-      high: Number(values["2. high"]),
-      low: Number(values["3. low"]),
-      close: Number(values["4. close"]),
-      volume: Number(values["5. volume"])
-    }))
+function parseYahooChartData(data) {
+  const result = data?.chart?.result?.[0];
+  const timestamps = result?.timestamp;
+  const quote = result?.indicators?.quote?.[0];
+
+  if (!timestamps?.length || !quote) {
+    throw new Error("未获取到日线数据，请检查股票代码是否正确。");
+  }
+
+  return timestamps.map((timestamp, index) => ({
+    date: new Date(timestamp * 1000).toISOString().slice(0, 10),
+    open: Number(quote.open[index]),
+    high: Number(quote.high[index]),
+    low: Number(quote.low[index]),
+    close: Number(quote.close[index]),
+    volume: Number(quote.volume[index])
+  }))
+    .filter((point) => point.date && Number.isFinite(point.close))
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
@@ -308,12 +298,7 @@ function formatVolume(value) {
 }
 
 function restoreLastQuery() {
-  const savedKey = window.localStorage.getItem("stock-api-key");
   const savedSymbol = window.localStorage.getItem("stock-last-symbol");
-
-  if (savedKey) {
-    elements.apiKey.value = savedKey;
-  }
 
   if (savedSymbol) {
     elements.symbol.value = savedSymbol;

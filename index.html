@@ -13,7 +13,7 @@
       <p class="hero__tag">STOCK ANALYTICS</p>
       <h1>股票分析网站</h1>
       <p class="hero__text">
-        输入股票代码与 Alpha Vantage API Key，查询日线行情、K 线走势与成交量变化，适合部署到 GitHub Pages。
+        输入股票代码，查询公开日线行情、K 线走势与成交量变化，适合部署到 GitHub Pages。
       </p>
       <div class="hero__note">
         <p>当前版本为纯前端实现，数据直接从公开股票 API 获取。</p>
@@ -29,14 +29,10 @@
             <p class="section-heading__eyebrow">Query</p>
             <h2>股票查询</h2>
           </div>
-          <p class="panel-heading__text">建议输入美股代码，例如 `AAPL`、`MSFT`、`NVDA`。</p>
+          <p class="panel-heading__text">默认使用免 API Key 的 Yahoo Finance 日线数据，建议输入美股代码，例如 `AAPL`、`MSFT`、`NVDA`。</p>
         </div>
 
-        <form id="stock-form" class="query-form">
-          <label class="form-field">
-            <span>API Key</span>
-            <input type="password" id="api-key" name="apiKey" placeholder="请输入 Alpha Vantage API Key" required>
-          </label>
+        <form id="stock-form" class="query-form query-form--simple">
           <label class="form-field">
             <span>股票代码</span>
             <input type="text" id="symbol" name="symbol" placeholder="例如：AAPL" value="AAPL" required>
@@ -46,9 +42,9 @@
 
         <div class="tips-box">
           <p>使用说明：</p>
-          <p>1. 到 Alpha Vantage 官网申请免费 API Key。</p>
-          <p>2. 在页面输入 API Key 和股票代码后查询。</p>
-          <p>3. 免费 Key 有频率限制，连续频繁请求可能被限流。</p>
+          <p>1. 输入股票代码后查询，例如 AAPL、MSFT、NVDA。</p>
+          <p>2. 股票代码会直接用于查询 Yahoo Finance，例如 AAPL、MSFT。</p>
+          <p>3. 数据来自公开 Yahoo Finance Chart 接口，可能存在延迟或访问限制。</p>
         </div>
       </section>
 
@@ -56,7 +52,7 @@
         <article class="card summary-card">
           <p class="summary-card__label">状态</p>
           <h3 id="summary-status">等待查询</h3>
-          <p id="summary-message">请输入 API Key 和股票代码后开始。</p>
+          <p id="summary-message">请输入股票代码后开始。</p>
         </article>
         <article class="card summary-card">
           <p class="summary-card__label">最新收盘价</p>
@@ -137,7 +133,7 @@
         <p>纯前端部署，适配 GitHub Pages。</p>
       </div>
       <div>
-        <p>数据源：<code>Alpha Vantage API</code></p>
+        <p>数据源：<code>Yahoo Finance Chart API</code></p>
         <p>图表绘制：<code>Canvas 原生实现</code></p>
       </div>
     </div>

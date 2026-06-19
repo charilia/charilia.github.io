@@ -25,31 +25,26 @@
 
 - 前端：原生 HTML、CSS、JavaScript
 - 图表：Canvas 原生绘制
-- 数据源：Alpha Vantage 官方公开股票 API
+- 数据源：Yahoo Finance 公开 Chart 接口
 - 部署方式：GitHub Pages
 
 当前版本不依赖后端服务，适合直接托管到静态站点平台。
 
 ## 使用方式
 
-### 1. 获取 API Key
+### 1. 查询股票
 
-前往 Alpha Vantage 官网申请免费 API Key：
+打开首页后，输入股票代码，例如：
 
-```text
-https://www.alphavantage.co/support/#api-key
-```
-
-### 2. 查询股票
-
-打开首页后，输入：
-
-- API Key
-- 股票代码，例如 `AAPL`、`MSFT`、`NVDA`
+- `AAPL`
+- `MSFT`
+- `NVDA`
 
 然后点击“查询行情”。
 
-### 3. 查看结果
+股票代码会直接用于查询 Yahoo Finance，例如 `AAPL`、`MSFT`。
+
+### 2. 查看结果
 
 页面会展示：
 
@@ -64,17 +59,16 @@ https://www.alphavantage.co/support/#api-key
 
 ## 数据来源说明
 
-当前实现使用的是 Alpha Vantage 的日线接口：
+当前实现使用的是 Yahoo Finance 的公开 Chart 接口：
 
 ```text
-TIME_SERIES_DAILY
+https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=3mo&interval=1d
 ```
 
-接口请求示例：
+其中：
 
-```text
-https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=AAPL&outputsize=compact&apikey=你的Key
-```
+- `range=3mo` 表示查询最近 3 个月数据
+- `interval=1d` 表示日线数据
 
 ## 本地开发
 
@@ -118,8 +112,7 @@ https://你的用户名.github.io/仓库名/
 
 ## 限制说明
 
-- 这是纯前端实现，API Key 会在浏览器端使用
-- 当前版本不会把 API Key 提交到仓库，但会保存在浏览器本地 `localStorage`
-- Alpha Vantage 免费 Key 有调用频率限制
+- 这是纯前端实现，数据直接在浏览器端请求公开接口
+- Yahoo Finance 公开接口可能存在访问频率、CORS 或地区限制
 - 部分市场或代码可能不在该接口支持范围内
 - 如果后续需要更稳定的数据源、更多指标或更高请求频率，建议增加后端中转层

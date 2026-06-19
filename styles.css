@@ -137,6 +137,10 @@ code {
   align-items: end;
 }
 
+.query-form--simple {
+  grid-template-columns: minmax(220px, 1fr) auto;
+}
+
 .form-field {
   display: grid;
   gap: 10px;
