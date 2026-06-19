@@ -55,9 +55,15 @@ async function handleSubmit(event) {
 }
 
 async function fetchDailySeries(symbol) {
-  const url = new URL(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}`);
-  url.searchParams.set("range", "3mo");
-  url.searchParams.set("interval", "1d");
+  const stockCode = normalizeAshareSymbol(symbol);
+  const url = new URL("https://push2his.eastmoney.com/api/qt/stock/kline/get");
+  url.searchParams.set("secid", toEastmoneySecid(stockCode));
+  url.searchParams.set("fields1", "f1,f2,f3,f4,f5,f6");
+  url.searchParams.set("fields2", "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61");
+  url.searchParams.set("klt", "101");
+  url.searchParams.set("fqt", "1");
+  url.searchParams.set("beg", "0");
+  url.searchParams.set("end", "20500101");
 
   const response = await fetch(url.toString());
   if (!response.ok) {
@@ -65,26 +71,39 @@ async function fetchDailySeries(symbol) {
   }
 
   const data = await response.json();
-  return parseYahooChartData(data);
+  return parseEastmoneyKlines(data);
 }
 
-function parseYahooChartData(data) {
-  const result = data?.chart?.result?.[0];
-  const timestamps = result?.timestamp;
-  const quote = result?.indicators?.quote?.[0];
+function normalizeAshareSymbol(symbol) {
+  const stockCode = symbol.trim();
+  if (!/^\d{6}$/.test(stockCode)) {
+    throw new Error("请输入 6 位 A 股代码，例如 600519、000001。");
+  }
+  return stockCode;
+}
 
-  if (!timestamps?.length || !quote) {
-    throw new Error("未获取到日线数据，请检查股票代码是否正确。");
+function toEastmoneySecid(stockCode) {
+  const market = stockCode.startsWith("6") ? "1" : "0";
+  return `${market}.${stockCode}`;
+}
+
+function parseEastmoneyKlines(data) {
+  const klines = data?.data?.klines;
+  if (!klines?.length) {
+    throw new Error("未获取到日线数据，请检查 A 股代码是否正确。");
   }
 
-  return timestamps.map((timestamp, index) => ({
-    date: new Date(timestamp * 1000).toISOString().slice(0, 10),
-    open: Number(quote.open[index]),
-    high: Number(quote.high[index]),
-    low: Number(quote.low[index]),
-    close: Number(quote.close[index]),
-    volume: Number(quote.volume[index])
-  }))
+  return klines.map((row) => {
+    const [date, open, close, high, low, volume] = row.split(",");
+    return {
+      date,
+      open: Number(open),
+      high: Number(high),
+      low: Number(low),
+      close: Number(close),
+      volume: Number(volume)
+    };
+  })
     .filter((point) => point.date && Number.isFinite(point.close))
     .sort((a, b) => b.date.localeCompare(a.date));
 }
@@ -166,7 +185,7 @@ function drawCandlestickChart(points) {
     const closeY = mapValue(point.close, minPrice, priceRange, padding.top, plotHeight);
     const highY = mapValue(point.high, minPrice, priceRange, padding.top, plotHeight);
     const lowY = mapValue(point.low, minPrice, priceRange, padding.top, plotHeight);
-    const color = point.close >= point.open ? "#3dd2a5" : "#ff6b7a";
+    const color = point.close >= point.open ? "#ff4d5e" : "#21c784";
 
     ctx.strokeStyle = color;
     ctx.lineWidth = 1.2;
@@ -214,7 +233,7 @@ function drawVolumeChart(points) {
     const heightRatio = point.volume / maxVolume;
     const barHeight = plotHeight * heightRatio;
     const y = padding.top + plotHeight - barHeight;
-    ctx.fillStyle = point.close >= point.open ? "rgba(61, 210, 165, 0.85)" : "rgba(255, 107, 122, 0.85)";
+    ctx.fillStyle = point.close >= point.open ? "rgba(255, 77, 94, 0.85)" : "rgba(33, 199, 132, 0.85)";
     ctx.fillRect(x, y, barWidth, barHeight);
   });
 

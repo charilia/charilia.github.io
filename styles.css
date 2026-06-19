@@ -5,9 +5,10 @@
   --surface-strong: rgba(8, 16, 30, 0.94);
   --text: #eaf2ff;
   --muted: #93a4bf;
-  --primary: #3dd2a5;
-  --primary-strong: #18b286;
-  --danger: #ff6b7a;
+  --primary: #d83b48;
+  --primary-strong: #b82534;
+  --up: #ff4d5e;
+  --down: #21c784;
   --border: rgba(171, 194, 224, 0.14);
   --shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
   --radius: 24px;
@@ -255,11 +256,11 @@ td {
 }
 
 .price-up {
-  color: var(--primary);
+  color: var(--up);
 }
 
 .price-down {
-  color: var(--danger);
+  color: var(--down);
 }
 
 .footer {
