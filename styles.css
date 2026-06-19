@@ -21,6 +21,7 @@
 
 body {
   margin: 0;
+  overflow-x: hidden;
   font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
   color: var(--text);
   background:
@@ -95,9 +96,11 @@ code {
 .dashboard {
   display: grid;
   gap: 24px;
+  min-width: 0;
 }
 
 .card {
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
@@ -116,6 +119,7 @@ code {
   justify-content: space-between;
   gap: 20px;
   align-items: end;
+  min-width: 0;
   margin-bottom: 22px;
 }
 
@@ -128,6 +132,7 @@ code {
   margin: 0;
   color: var(--muted);
   max-width: 360px;
+  overflow-wrap: anywhere;
   line-height: 1.7;
 }
 
@@ -186,7 +191,8 @@ code {
 .quick-panel {
   display: grid;
   gap: 18px;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-width: 0;
   margin-top: 18px;
   padding: 18px;
   border-radius: 18px;
@@ -203,6 +209,7 @@ code {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  min-width: 0;
 }
 
 .chip-button,
@@ -216,8 +223,11 @@ code {
 
 .chip-button {
   min-height: 38px;
+  max-width: 100%;
   padding: 0 14px;
   border-radius: 999px;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .chip-button:hover,
@@ -235,6 +245,8 @@ code {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .favorite-chip__remove {
@@ -254,6 +266,7 @@ code {
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.03);
   color: var(--muted);
+  overflow-wrap: anywhere;
   line-height: 1.8;
 }
 
@@ -261,9 +274,11 @@ code {
   display: grid;
   gap: 18px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-width: 0;
 }
 
 .summary-card {
+  min-width: 0;
   padding: 22px;
 }
 
@@ -275,28 +290,34 @@ code {
 
 .summary-card h3 {
   font-size: 1.8rem;
+  overflow-wrap: anywhere;
 }
 
 .summary-card p {
   margin: 10px 0 0;
   color: var(--muted);
+  overflow-wrap: anywhere;
   line-height: 1.7;
 }
 
 .chart-layout {
   display: grid;
   gap: 24px;
-  grid-template-columns: 1.2fr 0.8fr;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  min-width: 0;
 }
 
 .chart-card canvas {
   width: 100%;
+  max-width: 100%;
   display: block;
   border-radius: 18px;
   background: rgba(4, 10, 18, 0.72);
 }
 
 .table-wrapper {
+  max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
 }
 
