@@ -1,4 +1,5 @@
 const MAX_POINTS = 60;
+const FAVORITES_KEY = "stock-favorites";
 
 const elements = {
   form: document.getElementById("stock-form"),
@@ -12,12 +13,71 @@ const elements = {
   volume: document.getElementById("summary-volume"),
   open: document.getElementById("summary-open"),
   tableBody: document.getElementById("data-table-body"),
+  quickList: document.getElementById("quick-list"),
+  favoriteAdd: document.getElementById("favorite-add"),
+  favoriteList: document.getElementById("favorite-list"),
   candlestickCanvas: document.getElementById("candlestick-chart"),
   volumeCanvas: document.getElementById("volume-chart")
 };
 
 if (elements.form) {
   elements.form.addEventListener("submit", handleSubmit);
+}
+
+if (elements.quickList) {
+  elements.quickList.addEventListener("click", handleQuickQuery);
+}
+
+if (elements.favoriteAdd) {
+  elements.favoriteAdd.addEventListener("click", handleAddFavorite);
+}
+
+if (elements.favoriteList) {
+  elements.favoriteList.addEventListener("click", handleFavoriteClick);
+}
+
+function querySymbol(symbol) {
+  elements.symbol.value = symbol;
+  elements.form.requestSubmit();
+}
+
+function handleQuickQuery(event) {
+  const button = event.target.closest("[data-symbol]");
+  if (!button) {
+    return;
+  }
+
+  querySymbol(button.dataset.symbol);
+}
+
+function handleAddFavorite() {
+  try {
+    const symbol = normalizeAshareSymbol(elements.symbol.value);
+    const favorites = getFavorites();
+
+    if (!favorites.includes(symbol)) {
+      favorites.push(symbol);
+      saveFavorites(favorites);
+      renderFavorites();
+    }
+
+    updateStatus("已收藏", `${symbol} 已加入我的收藏。`);
+  } catch (error) {
+    updateStatus("收藏失败", error.message);
+  }
+}
+
+function handleFavoriteClick(event) {
+  const removeButton = event.target.closest("[data-remove-symbol]");
+  if (removeButton) {
+    removeFavorite(removeButton.dataset.removeSymbol);
+    return;
+  }
+
+  const queryButton = event.target.closest("[data-symbol]");
+  if (queryButton) {
+    querySymbol(queryButton.dataset.symbol);
+  }
 }
 
 async function handleSubmit(event) {
@@ -118,6 +178,45 @@ function updateSummary(symbol, latest, previous) {
 function updateStatus(title, message) {
   elements.status.textContent = title;
   elements.message.textContent = message;
+}
+
+function getFavorites() {
+  try {
+    const value = window.localStorage.getItem(FAVORITES_KEY);
+    const favorites = JSON.parse(value || "[]");
+    return Array.isArray(favorites) ? favorites.filter((symbol) => /^\d{6}$/.test(symbol)) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveFavorites(favorites) {
+  window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+}
+
+function removeFavorite(symbol) {
+  saveFavorites(getFavorites().filter((favorite) => favorite !== symbol));
+  renderFavorites();
+}
+
+function renderFavorites() {
+  const favorites = getFavorites();
+
+  if (!elements.favoriteList) {
+    return;
+  }
+
+  if (!favorites.length) {
+    elements.favoriteList.innerHTML = '<span class="empty-favorite">暂无收藏</span>';
+    return;
+  }
+
+  elements.favoriteList.innerHTML = favorites.map((symbol) => `
+    <span class="favorite-chip">
+      <button class="chip-button" type="button" data-symbol="${symbol}">${symbol}</button>
+      <button class="favorite-chip__remove" type="button" data-remove-symbol="${symbol}" aria-label="删除 ${symbol}">×</button>
+    </span>
+  `).join("");
 }
 
 function renderTable(points) {
@@ -318,3 +417,4 @@ function restoreLastQuery() {
 }
 
 restoreLastQuery();
+renderFavorites();

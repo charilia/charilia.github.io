@@ -177,6 +177,77 @@ code {
   filter: brightness(1.05);
 }
 
+.button--secondary {
+  border: 1px solid rgba(216, 59, 72, 0.42);
+  background: rgba(216, 59, 72, 0.12);
+  color: var(--text);
+}
+
+.quick-panel {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.quick-panel__title {
+  margin: 0 0 12px;
+  color: #d7e3f6;
+  font-weight: 700;
+}
+
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chip-button,
+.favorite-chip__remove {
+  border: 1px solid rgba(171, 194, 224, 0.16);
+  background: rgba(6, 12, 21, 0.72);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.chip-button {
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+}
+
+.chip-button:hover,
+.favorite-chip__remove:hover {
+  border-color: rgba(216, 59, 72, 0.72);
+  color: #ffffff;
+}
+
+.favorite-list {
+  min-height: 38px;
+  align-items: center;
+}
+
+.favorite-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.favorite-chip__remove {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  line-height: 1;
+}
+
+.empty-favorite {
+  color: var(--muted);
+}
+
 .tips-box {
   margin-top: 18px;
   padding: 18px;
@@ -281,7 +352,8 @@ td {
     grid-template-columns: 1fr 1fr;
   }
 
-  .query-form {
+  .query-form,
+  .quick-panel {
     grid-template-columns: 1fr;
   }
 }
