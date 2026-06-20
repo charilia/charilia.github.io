@@ -18,7 +18,22 @@ const elements = {
   favoriteAdd: document.getElementById("favorite-add"),
   favoriteList: document.getElementById("favorite-list"),
   candlestickCanvas: document.getElementById("candlestick-chart"),
-  volumeCanvas: document.getElementById("volume-chart")
+  volumeCanvas: document.getElementById("volume-chart"),
+  analysisScore: document.getElementById("analysis-score"),
+  analysisSignal: document.getElementById("analysis-signal"),
+  analysisMa: document.getElementById("analysis-ma"),
+  analysisMaDetail: document.getElementById("analysis-ma-detail"),
+  analysisVolume: document.getElementById("analysis-volume"),
+  analysisVolumeDetail: document.getElementById("analysis-volume-detail"),
+  analysisRisk: document.getElementById("analysis-risk"),
+  analysisRiskDetail: document.getElementById("analysis-risk-detail"),
+  metricMa5: document.getElementById("metric-ma5"),
+  metricMa20: document.getElementById("metric-ma20"),
+  metricMa60: document.getElementById("metric-ma60"),
+  metricVolatility: document.getElementById("metric-volatility"),
+  metricVolumeRatio: document.getElementById("metric-volume-ratio"),
+  metricPosition: document.getElementById("metric-position"),
+  analysisList: document.getElementById("analysis-list")
 };
 
 if (elements.form) {
@@ -111,6 +126,7 @@ async function handleSubmit(event) {
     lastQueriedStock = { symbol: stock.symbol, name: stock.name };
     updateSummary(stock, latest, previous);
     renderTable(displayPoints.slice(0, 10));
+    renderAdvancedAnalysis(stock, displayPoints);
     drawCandlestickChart(displayPoints.slice().reverse());
     drawVolumeChart(displayPoints.slice().reverse());
     updateFavoriteName(stock);
@@ -190,6 +206,111 @@ function updateSummary(stock, latest, previous) {
   elements.open.textContent = `开盘 ${formatPrice(latest.open)}`;
 }
 
+function renderAdvancedAnalysis(stock, points) {
+  const closes = points.map((point) => point.close);
+  const volumes = points.map((point) => point.volume);
+  const latest = points[0];
+  const ma5 = average(closes.slice(0, 5));
+  const ma20 = average(closes.slice(0, 20));
+  const ma60 = average(closes);
+  const volumeAverage20 = average(volumes.slice(0, 20));
+  const volumeRatio = latest.volume / Math.max(volumeAverage20, 1);
+  const volatility = calculateVolatility(closes.slice(0, 20));
+  const highest = Math.max(...points.map((point) => point.high));
+  const lowest = Math.min(...points.map((point) => point.low));
+  const position = ((latest.close - lowest) / Math.max(highest - lowest, 0.01)) * 100;
+  const trendScore = calculateTrendScore(latest.close, ma5, ma20, ma60, volumeRatio, volatility, position);
+  const signal = getSignal(trendScore);
+  const maTrend = latest.close >= ma5 && ma5 >= ma20 ? "多头排列" : latest.close < ma5 && ma5 < ma20 ? "短线偏弱" : "震荡整理";
+  const volumeState = volumeRatio >= 1.5 ? "明显放量" : volumeRatio <= 0.7 ? "量能收缩" : "量能平稳";
+  const riskState = volatility >= 4 ? "高波动" : volatility >= 2 ? "中等波动" : "低波动";
+  const insights = [
+    `${formatStockLabel(stock)} 当前收盘价位于 60 日区间的 ${position.toFixed(1)}%，${position >= 70 ? "处于相对高位" : position <= 30 ? "处于相对低位" : "处于中部区域"}。`,
+    `短中期均线状态为${maTrend}，MA5 ${formatPrice(ma5)}，MA20 ${formatPrice(ma20)}。`,
+    `今日量比 ${volumeRatio.toFixed(2)}，${volumeState}，可结合价格方向观察资金活跃度。`,
+    `近 20 日年化波动率约 ${volatility.toFixed(2)}%，风险状态为${riskState}。`
+  ];
+
+  setText(elements.analysisScore, `${trendScore} / 100`);
+  setText(elements.analysisSignal, signal.text);
+  elements.analysisScore.className = signal.className;
+  setText(elements.analysisMa, maTrend);
+  setText(elements.analysisMaDetail, `MA5 ${formatPrice(ma5)} / MA20 ${formatPrice(ma20)} / MA60 ${formatPrice(ma60)}`);
+  setText(elements.analysisVolume, volumeState);
+  setText(elements.analysisVolumeDetail, `今日量比 ${volumeRatio.toFixed(2)}，20 日均量 ${formatVolume(volumeAverage20)}`);
+  setText(elements.analysisRisk, riskState);
+  setText(elements.analysisRiskDetail, `波动率 ${volatility.toFixed(2)}%，区间位置 ${position.toFixed(1)}%`);
+  setText(elements.metricMa5, formatPrice(ma5));
+  setText(elements.metricMa20, formatPrice(ma20));
+  setText(elements.metricMa60, formatPrice(ma60));
+  setText(elements.metricVolatility, `${volatility.toFixed(2)}%`);
+  setText(elements.metricVolumeRatio, volumeRatio.toFixed(2));
+  setText(elements.metricPosition, `${position.toFixed(1)}%`);
+
+  if (elements.analysisList) {
+    elements.analysisList.innerHTML = insights.map((insight) => `<p>${escapeHtml(insight)}</p>`).join("");
+  }
+}
+
+function calculateTrendScore(close, ma5, ma20, ma60, volumeRatio, volatility, position) {
+  let score = 50;
+  score += close >= ma5 ? 10 : -8;
+  score += ma5 >= ma20 ? 12 : -10;
+  score += ma20 >= ma60 ? 10 : -8;
+  score += volumeRatio >= 1 && close >= ma5 ? 8 : volumeRatio < 0.7 ? -4 : 0;
+  score += position >= 35 && position <= 80 ? 6 : position > 90 ? -6 : 0;
+  score -= volatility >= 5 ? 8 : volatility >= 3 ? 3 : 0;
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
+function getSignal(score) {
+  if (score >= 72) {
+    return { text: "趋势较强，关注量价延续", className: "price-up" };
+  }
+
+  if (score <= 40) {
+    return { text: "走势偏弱，注意回撤风险", className: "price-down" };
+  }
+
+  return { text: "震荡观察，等待方向确认", className: "price-neutral" };
+}
+
+function calculateVolatility(closes) {
+  const returns = [];
+  for (let i = 0; i < closes.length - 1; i += 1) {
+    returns.push((closes[i] - closes[i + 1]) / closes[i + 1]);
+  }
+
+  const mean = average(returns);
+  const variance = average(returns.map((value) => (value - mean) ** 2));
+  return Math.sqrt(variance) * Math.sqrt(252) * 100;
+}
+
+function average(values) {
+  const validValues = values.filter(Number.isFinite);
+  if (!validValues.length) {
+    return 0;
+  }
+
+  return validValues.reduce((sum, value) => sum + value, 0) / validValues.length;
+}
+
+function setText(element, value) {
+  if (element) {
+    element.textContent = value;
+  }
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>'"]/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;"
+  })[character]);
+}
+
 function formatStockLabel(stock) {
   return stock.name ? `${stock.name} ${stock.symbol}` : stock.symbol;
 }
@@ -261,7 +382,7 @@ function renderFavorites() {
 
   elements.favoriteList.innerHTML = favorites.map((stock) => `
     <span class="favorite-chip">
-      <button class="chip-button" type="button" data-symbol="${stock.symbol}">${formatStockLabel(stock)}</button>
+      <button class="chip-button" type="button" data-symbol="${stock.symbol}">${escapeHtml(formatStockLabel(stock))}</button>
       <button class="favorite-chip__remove" type="button" data-remove-symbol="${stock.symbol}" aria-label="删除 ${stock.symbol}">×</button>
     </span>
   `).join("");
@@ -381,10 +502,10 @@ function drawVolumeChart(points) {
 }
 
 function drawChartFrame(ctx, width, height, padding) {
-  ctx.fillStyle = "rgba(4, 10, 18, 0.72)";
+  ctx.fillStyle = "#fffdf8";
   ctx.fillRect(0, 0, width, height);
 
-  ctx.strokeStyle = "rgba(171, 194, 224, 0.14)";
+  ctx.strokeStyle = "rgba(31, 42, 46, 0.1)";
   ctx.lineWidth = 1;
 
   const lines = 4;
@@ -398,7 +519,7 @@ function drawChartFrame(ctx, width, height, padding) {
 }
 
 function drawPriceAxis(ctx, minPrice, maxPrice, padding, plotHeight, width) {
-  ctx.fillStyle = "#93a4bf";
+  ctx.fillStyle = "#6f7b7c";
   ctx.font = '12px "Microsoft YaHei"';
   ctx.textAlign = "right";
 
@@ -416,7 +537,7 @@ function drawPriceAxis(ctx, minPrice, maxPrice, padding, plotHeight, width) {
 }
 
 function drawVolumeAxis(ctx, maxVolume, padding, plotHeight, width) {
-  ctx.fillStyle = "#93a4bf";
+  ctx.fillStyle = "#6f7b7c";
   ctx.font = '12px "Microsoft YaHei"';
   ctx.textAlign = "right";
 

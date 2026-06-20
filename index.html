@@ -3,20 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>A 股行情分析</title>
-  <meta name="description" content="A 股行情查询页面，支持沪深股票代码查询、常用股票快捷查询、收藏股票、K 线图和成交量展示。">
-  <link rel="stylesheet" href="styles.css?v=2026061904">
+  <title>A 股智能分析</title>
+  <meta name="description" content="A 股智能行情分析页面，支持沪深股票查询、收藏、K 线图、成交量和高级技术指标分析。">
+  <link rel="stylesheet" href="styles.css?v=2026062001">
 </head>
 <body>
   <header class="hero">
     <div class="container hero__content">
-      <p class="hero__tag">沪深 A 股行情</p>
-      <h1>A 股行情分析</h1>
+      <p class="hero__tag">沪深 A 股智能行情</p>
+      <h1>A 股智能分析</h1>
       <p class="hero__text">
-        输入沪深 A 股代码，查看日 K 走势、成交量、涨跌幅和最近交易数据。
+        以清爽的数据看板追踪沪深 A 股走势，结合均线、波动率、量能和趋势评分辅助判断。
       </p>
+      <div class="hero__actions">
+        <a class="button button--primary" href="#stock-form">开始查询</a>
+        <a class="button button--ghost" href="#analysis-panel">查看分析</a>
+      </div>
       <div class="hero__note">
-        <p>行情数据仅供参考，不构成投资建议。</p>
+        <p>行情与分析结果仅供参考，不构成投资建议。</p>
       </div>
     </div>
   </header>
@@ -90,6 +94,68 @@
         </article>
       </section>
 
+      <section class="analysis-panel" id="analysis-panel">
+        <article class="card analysis-card analysis-card--score">
+          <p class="summary-card__label">综合评分</p>
+          <h3 id="analysis-score">--</h3>
+          <p id="analysis-signal">查询后生成趋势判断。</p>
+        </article>
+        <article class="card analysis-card">
+          <p class="summary-card__label">均线趋势</p>
+          <h3 id="analysis-ma">--</h3>
+          <p id="analysis-ma-detail">MA5 / MA20 / MA60</p>
+        </article>
+        <article class="card analysis-card">
+          <p class="summary-card__label">量能变化</p>
+          <h3 id="analysis-volume">--</h3>
+          <p id="analysis-volume-detail">今日成交量相对 20 日均量</p>
+        </article>
+        <article class="card analysis-card">
+          <p class="summary-card__label">风险波动</p>
+          <h3 id="analysis-risk">--</h3>
+          <p id="analysis-risk-detail">20 日波动率与区间位置</p>
+        </article>
+      </section>
+
+      <section class="card insight-card">
+        <div class="panel-heading">
+          <div>
+            <p class="section-heading__eyebrow">高级分析</p>
+            <h2>技术指标解读</h2>
+          </div>
+          <p class="panel-heading__text">基于最近 60 个交易日计算趋势、量能、波动和位置，不作为买卖依据。</p>
+        </div>
+        <div class="insight-grid">
+          <div class="insight-item">
+            <span>5 日均线</span>
+            <strong id="metric-ma5">--</strong>
+          </div>
+          <div class="insight-item">
+            <span>20 日均线</span>
+            <strong id="metric-ma20">--</strong>
+          </div>
+          <div class="insight-item">
+            <span>60 日均线</span>
+            <strong id="metric-ma60">--</strong>
+          </div>
+          <div class="insight-item">
+            <span>20 日波动率</span>
+            <strong id="metric-volatility">--</strong>
+          </div>
+          <div class="insight-item">
+            <span>20 日量比</span>
+            <strong id="metric-volume-ratio">--</strong>
+          </div>
+          <div class="insight-item">
+            <span>60 日区间位置</span>
+            <strong id="metric-position">--</strong>
+          </div>
+        </div>
+        <div class="analysis-list" id="analysis-list">
+          <p>输入股票代码后，将自动生成多维度分析结论。</p>
+        </div>
+      </section>
+
       <section class="chart-layout">
         <article class="card chart-card">
           <div class="panel-heading">
@@ -148,8 +214,8 @@
   <footer class="footer">
     <div class="container footer__content">
       <div>
-        <h3>A 股行情分析</h3>
-        <p>关注沪深 A 股日线走势与成交量变化。</p>
+        <h3>A 股智能分析</h3>
+        <p>关注沪深 A 股趋势、量能与技术指标变化。</p>
       </div>
       <div>
         <p>数据源：<code>腾讯证券 A 股 K 线接口</code></p>
@@ -158,6 +224,6 @@
     </div>
   </footer>
 
-  <script src="script.js?v=2026061904"></script>
+  <script src="script.js?v=2026062001"></script>
 </body>
 </html>
