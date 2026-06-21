@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>A 股智能分析</title>
-  <meta name="description" content="A 股智能行情分析页面，支持沪深股票查询、收藏、K 线图、成交量和高级技术指标分析。">
-  <link rel="stylesheet" href="styles.css?v=2026062001">
+  <meta name="description" content="A 股智能行情分析页面，支持沪深股票查询、收藏、K 线图、高级技术指标和股票条件筛选。">
+  <link rel="stylesheet" href="styles.css?v=2026062101">
 </head>
 <body>
   <header class="hero">
@@ -68,6 +68,67 @@
           <p>1. 输入 6 位证券代码后查询，例如 600519、000001、300750。</p>
           <p>2. 6 开头按沪市处理，其它常见 A 股代码按深市处理。</p>
           <p>3. 行情数据来自腾讯证券公开 K 线接口，仅供参考。</p>
+        </div>
+      </section>
+
+      <section class="card screener-card" id="stock-screener">
+        <div class="panel-heading">
+          <div>
+            <p class="section-heading__eyebrow">股票筛选</p>
+            <h2>条件选股</h2>
+          </div>
+          <p class="panel-heading__text">筛选非 ST、当日涨停、ROE、资产负债率和近期成交量放大的沪深 A 股。</p>
+        </div>
+
+        <form id="screener-form" class="screener-form">
+          <label class="check-field">
+            <input type="checkbox" id="filter-non-st" checked>
+            <span>非 ST 股</span>
+          </label>
+          <label class="check-field">
+            <input type="checkbox" id="filter-limit-up" checked>
+            <span>当日涨停</span>
+          </label>
+          <label class="form-field">
+            <span>ROE 大于（%）</span>
+            <input type="number" id="filter-roe" value="10" step="0.1">
+          </label>
+          <label class="form-field">
+            <span>资产负债率低于（%）</span>
+            <input type="number" id="filter-debt" value="60" step="0.1">
+          </label>
+          <label class="form-field">
+            <span>量比大于</span>
+            <input type="number" id="filter-volume-ratio" value="1.5" step="0.1">
+          </label>
+          <label class="form-field">
+            <span>扫描数量</span>
+            <input type="number" id="filter-limit" value="120" min="20" max="300" step="20">
+          </label>
+          <button class="button button--primary" type="submit">开始筛选</button>
+        </form>
+
+        <div class="screener-status" id="screener-status">点击“开始筛选”后，将按当前条件从公开接口获取并过滤股票。</div>
+        <div class="table-wrapper screener-table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>代码</th>
+                <th>名称</th>
+                <th>最新价</th>
+                <th>涨跌幅</th>
+                <th>量比</th>
+                <th>ROE</th>
+                <th>资产负债率</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="screener-table-body">
+              <tr>
+                <td colspan="8" class="empty-cell">暂无筛选结果</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -224,6 +285,6 @@
     </div>
   </footer>
 
-  <script src="script.js?v=2026062001"></script>
+  <script src="script.js?v=2026062101"></script>
 </body>
 </html>

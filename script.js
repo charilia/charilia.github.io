@@ -33,7 +33,16 @@ const elements = {
   metricVolatility: document.getElementById("metric-volatility"),
   metricVolumeRatio: document.getElementById("metric-volume-ratio"),
   metricPosition: document.getElementById("metric-position"),
-  analysisList: document.getElementById("analysis-list")
+  analysisList: document.getElementById("analysis-list"),
+  screenerForm: document.getElementById("screener-form"),
+  filterNonSt: document.getElementById("filter-non-st"),
+  filterLimitUp: document.getElementById("filter-limit-up"),
+  filterRoe: document.getElementById("filter-roe"),
+  filterDebt: document.getElementById("filter-debt"),
+  filterVolumeRatio: document.getElementById("filter-volume-ratio"),
+  filterLimit: document.getElementById("filter-limit"),
+  screenerStatus: document.getElementById("screener-status"),
+  screenerTableBody: document.getElementById("screener-table-body")
 };
 
 if (elements.form) {
@@ -50,6 +59,21 @@ if (elements.favoriteAdd) {
 
 if (elements.favoriteList) {
   elements.favoriteList.addEventListener("click", handleFavoriteClick);
+}
+
+if (elements.screenerForm) {
+  elements.screenerForm.addEventListener("submit", handleScreenSubmit);
+}
+
+if (elements.screenerTableBody) {
+  elements.screenerTableBody.addEventListener("click", handleScreenerTableClick);
+}
+
+function handleScreenerTableClick(event) {
+  const button = event.target.closest("[data-symbol]");
+  if (button) {
+    querySymbol(button.dataset.symbol);
+  }
 }
 
 function querySymbol(symbol) {
@@ -98,6 +122,169 @@ function handleFavoriteClick(event) {
   if (queryButton) {
     querySymbol(queryButton.dataset.symbol);
   }
+}
+
+async function handleScreenSubmit(event) {
+  event.preventDefault();
+  const filters = getScreenFilters();
+  setText(elements.screenerStatus, "正在获取行情与财务数据，请稍候...");
+  renderScreenerRows([]);
+
+  try {
+    const rows = await screenStocks(filters);
+    renderScreenerRows(rows);
+    setText(elements.screenerStatus, `筛选完成：扫描 ${filters.limit} 只涨幅靠前股票，符合条件 ${rows.length} 只。`);
+  } catch (error) {
+    setText(elements.screenerStatus, `筛选失败：${error.message}`);
+  }
+}
+
+function getScreenFilters() {
+  return {
+    nonSt: elements.filterNonSt?.checked ?? true,
+    limitUp: elements.filterLimitUp?.checked ?? true,
+    roeMin: parseOptionalNumber(elements.filterRoe?.value),
+    debtMax: parseOptionalNumber(elements.filterDebt?.value),
+    volumeRatioMin: parseOptionalNumber(elements.filterVolumeRatio?.value),
+    limit: clampNumber(Number(elements.filterLimit?.value) || 120, 20, 300)
+  };
+}
+
+async function screenStocks(filters) {
+  const stocks = await fetchMarketCandidates(filters.limit);
+  const marketMatches = stocks.filter((stock) => {
+    if (filters.nonSt && /ST|退/.test(stock.name)) {
+      return false;
+    }
+
+    if (filters.limitUp && stock.changePercent < 9.8) {
+      return false;
+    }
+
+    if (filters.volumeRatioMin !== null && stock.volumeRatio < filters.volumeRatioMin) {
+      return false;
+    }
+
+    return true;
+  });
+  const results = [];
+
+  for (const stock of marketMatches.slice(0, 80)) {
+    const finance = await fetchFinanceMetrics(stock.symbol);
+    const roePass = filters.roeMin === null || (Number.isFinite(finance.roe) && finance.roe > filters.roeMin);
+    const debtPass = filters.debtMax === null || (Number.isFinite(finance.debtRatio) && finance.debtRatio < filters.debtMax);
+
+    if (roePass && debtPass) {
+      results.push({ ...stock, ...finance });
+    }
+  }
+
+  return results.slice(0, 30);
+}
+
+async function fetchMarketCandidates(limit) {
+  const url = new URL("https://push2.eastmoney.com/api/qt/clist/get");
+  url.searchParams.set("pn", "1");
+  url.searchParams.set("pz", String(limit));
+  url.searchParams.set("po", "1");
+  url.searchParams.set("np", "1");
+  url.searchParams.set("ut", "bd1d9ddb04089700cf9c27f6f7426281");
+  url.searchParams.set("fltt", "2");
+  url.searchParams.set("invt", "2");
+  url.searchParams.set("fid", "f3");
+  url.searchParams.set("fs", "m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23");
+  url.searchParams.set("fields", "f12,f14,f2,f3,f10");
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    throw new Error(`行情列表请求失败：HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  const rows = data?.data?.diff;
+  if (!Array.isArray(rows)) {
+    throw new Error("未获取到行情列表数据。");
+  }
+
+  return rows.map((row) => ({
+    symbol: String(row.f12 || ""),
+    name: String(row.f14 || ""),
+    price: normalizeNumber(row.f2),
+    changePercent: normalizeNumber(row.f3),
+    volumeRatio: normalizeNumber(row.f10)
+  })).filter((stock) => /^\d{6}$/.test(stock.symbol));
+}
+
+async function fetchFinanceMetrics(symbol) {
+  const url = new URL("https://datacenter-web.eastmoney.com/api/data/v1/get");
+  url.searchParams.set("reportName", "RPT_F10_FINANCE_MAINFINADATA");
+  url.searchParams.set("columns", "ALL");
+  url.searchParams.set("filter", `(SECURITY_CODE=\"${symbol}\")`);
+  url.searchParams.set("pageNumber", "1");
+  url.searchParams.set("pageSize", "1");
+  url.searchParams.set("sortColumns", "REPORT_DATE");
+  url.searchParams.set("sortTypes", "-1");
+  url.searchParams.set("source", "WEB");
+  url.searchParams.set("client", "WEB");
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    throw new Error(`${symbol} 财务数据请求失败：HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  const row = data?.result?.data?.[0];
+  return {
+    roe: parseOptionalNumber(row?.ROEJQ),
+    debtRatio: parseOptionalNumber(row?.ZCFZL),
+    reportDate: row?.REPORT_DATE_NAME || "--"
+  };
+}
+
+function renderScreenerRows(rows) {
+  if (!elements.screenerTableBody) {
+    return;
+  }
+
+  if (!rows.length) {
+    elements.screenerTableBody.innerHTML = `
+      <tr>
+        <td colspan="8" class="empty-cell">暂无筛选结果</td>
+      </tr>
+    `;
+    return;
+  }
+
+  elements.screenerTableBody.innerHTML = rows.map((stock) => `
+    <tr>
+      <td>${stock.symbol}</td>
+      <td>${escapeHtml(stock.name)}</td>
+      <td>${formatNullable(stock.price)}</td>
+      <td class="${stock.changePercent >= 0 ? "price-up" : "price-down"}">${formatNullable(stock.changePercent)}%</td>
+      <td>${formatNullable(stock.volumeRatio)}</td>
+      <td>${formatNullable(stock.roe)}%</td>
+      <td>${formatNullable(stock.debtRatio)}%</td>
+      <td><button class="button button--secondary table-action" type="button" data-symbol="${stock.symbol}">查询</button></td>
+    </tr>
+  `).join("");
+}
+
+function parseOptionalNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function normalizeNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function clampNumber(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function formatNullable(value) {
+  return Number.isFinite(value) ? Number(value).toFixed(2) : "--";
 }
 
 async function handleSubmit(event) {

@@ -169,7 +169,8 @@ code {
 .control-panel,
 .chart-card,
 .data-card,
-.insight-card {
+.insight-card,
+.screener-card {
   padding: 28px;
 }
 
@@ -201,6 +202,52 @@ code {
   gap: 14px;
   grid-template-columns: minmax(220px, 1fr) auto auto;
   align-items: end;
+}
+
+.screener-form {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+  align-items: end;
+}
+
+.check-field {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  gap: 10px;
+  padding: 0 16px;
+  border: 1px solid rgba(31, 42, 46, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.54);
+  font-weight: 800;
+}
+
+.check-field input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+}
+
+.screener-status {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid rgba(42, 168, 118, 0.14);
+  border-radius: 18px;
+  background: rgba(42, 168, 118, 0.08);
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.screener-table-wrapper {
+  margin-top: 16px;
+}
+
+.table-action {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 0.9rem;
 }
 
 .form-field {
@@ -494,8 +541,9 @@ th {
   }
 
   .query-form,
-  .quick-panel {
-    grid-template-columns: 1fr;
+  .quick-panel,
+  .screener-form {
+    grid-template-columns: 1fr 1fr;
   }
 }
 
@@ -513,6 +561,7 @@ th {
   .chart-card,
   .data-card,
   .insight-card,
+  .screener-card,
   .summary-card,
   .analysis-card {
     padding: 22px;
@@ -529,6 +578,12 @@ th {
   .footer__content {
     flex-direction: column;
     align-items: start;
+  }
+
+  .query-form,
+  .quick-panel,
+  .screener-form {
+    grid-template-columns: 1fr;
   }
 
   .button {
